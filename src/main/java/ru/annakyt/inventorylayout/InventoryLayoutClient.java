@@ -33,17 +33,20 @@ public class InventoryLayoutClient implements ClientModInitializer {
     }
 
     public static void saveLayout(Inventory inventory) {
-        savedLayout.clear();
+        List<String> newLayout = new ArrayList<>(36);
         for (int i = 0; i < 36; i++) {
             ItemStack stack = inventory.getItem(i);
-            savedLayout.add(stack.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+            newLayout.add(stack.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         }
 
         JsonArray json = new JsonArray();
-        savedLayout.forEach(json::add);
+        newLayout.forEach(json::add);
         try {
             Files.createDirectories(CONFIG.getParent());
             Files.writeString(CONFIG, json.toString());
+            savedLayout.clear();
+            savedLayout.addAll(newLayout);
+            System.out.println("[Inventory Layout] Layout saved.");
         } catch (IOException exception) {
             System.err.println("[Inventory Layout] Save failed: " + exception.getMessage());
         }
@@ -55,6 +58,7 @@ public class InventoryLayoutClient implements ClientModInitializer {
         try {
             JsonArray json = JsonParser.parseString(Files.readString(CONFIG)).getAsJsonArray();
             for (JsonElement element : json) savedLayout.add(element.getAsString());
+            if (savedLayout.size() != 36) savedLayout.clear();
         } catch (Exception exception) {
             savedLayout.clear();
             System.err.println("[Inventory Layout] Load failed: " + exception.getMessage());
@@ -65,21 +69,36 @@ public class InventoryLayoutClient implements ClientModInitializer {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.gameMode == null || minecraft.player == null || !hasLayout()) return;
 
-        for (int sourceMenuSlot = 0; sourceMenuSlot < menu.slots.size(); sourceMenuSlot++) {
-            Slot source = menu.slots.get(sourceMenuSlot);
-            if (source.container == inventory || source.getItem().isEmpty()) continue;
+        // Process each saved inventory position independently. This preserves repeated
+        // item types in different slots instead of always targeting the first match.
+        for (int inventoryIndex = 0; inventoryIndex < 36; inventoryIndex++) {
+            String wantedId = savedLayout.get(inventoryIndex);
+            if (wantedId.isEmpty()) continue;
 
-            String itemId = BuiltInRegistries.ITEM.getKey(source.getItem().getItem()).toString();
-            int targetInventoryIndex = savedLayout.indexOf(itemId);
-            if (targetInventoryIndex < 0) continue;
+            int targetMenuSlot = findPlayerSlot(menu, inventory, inventoryIndex);
+            if (targetMenuSlot < 0) continue;
 
-            int targetMenuSlot = findPlayerSlot(menu, inventory, targetInventoryIndex);
-            if (targetMenuSlot < 0 || targetMenuSlot == sourceMenuSlot) continue;
+            int sourceMenuSlot = findContainerStack(menu, inventory, wantedId);
+            if (sourceMenuSlot < 0) continue;
 
+            Slot target = menu.slots.get(targetMenuSlot);
+            if (!target.mayPlace(menu.slots.get(sourceMenuSlot).getItem())) continue;
+
+            // Use normal container clicks so the server remains authoritative.
             minecraft.gameMode.handleInventoryMouseClick(menu.containerId, sourceMenuSlot, 0, ClickType.PICKUP, minecraft.player);
             minecraft.gameMode.handleInventoryMouseClick(menu.containerId, targetMenuSlot, 0, ClickType.PICKUP, minecraft.player);
             minecraft.gameMode.handleInventoryMouseClick(menu.containerId, sourceMenuSlot, 0, ClickType.PICKUP, minecraft.player);
         }
+    }
+
+    private static int findContainerStack(AbstractContainerMenu menu, Inventory inventory, String itemId) {
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot slot = menu.slots.get(i);
+            if (slot.container == inventory || slot.getItem().isEmpty()) continue;
+            String currentId = BuiltInRegistries.ITEM.getKey(slot.getItem().getItem()).toString();
+            if (itemId.equals(currentId)) return i;
+        }
+        return -1;
     }
 
     private static int findPlayerSlot(AbstractContainerMenu menu, Inventory inventory, int inventoryIndex) {
