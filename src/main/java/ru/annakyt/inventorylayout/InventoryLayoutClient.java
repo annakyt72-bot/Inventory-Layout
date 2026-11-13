@@ -85,7 +85,7 @@ public class InventoryLayoutClient implements ClientModInitializer {
     private static int findPlayerSlot(AbstractContainerMenu menu, Inventory inventory, int inventoryIndex) {
         for (int i = 0; i < menu.slots.size(); i++) {
             Slot slot = menu.slots.get(i);
-            if (slot.container == inventory && slot.getSlotIndex() == inventoryIndex) return i;
+            if (slot.container == inventory && slot.index == inventoryIndex) return i;
         }
         return -1;
     }
