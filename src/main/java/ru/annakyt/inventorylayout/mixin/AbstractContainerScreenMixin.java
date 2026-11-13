@@ -3,17 +3,13 @@ package ru.annakyt.inventorylayout.mixin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -24,9 +20,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Shadow protected int leftPos;
     @Shadow protected int topPos;
     @Shadow protected int imageWidth;
-
-    @Shadow
-    protected abstract <W extends GuiEventListener & Renderable & NarratableEntry> W addRenderableWidget(W widget);
 
     @Inject(method = "init", at = @At("TAIL"))
     private void inventoryLayout$addButton(CallbackInfo ci) {
@@ -50,6 +43,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
           .tooltip(Tooltip.create(hint))
           .build();
 
-        addRenderableWidget(button);
+        ((ScreenAccessor)(Object)this).inventoryLayout$addRenderableWidget(button);
     }
 }
