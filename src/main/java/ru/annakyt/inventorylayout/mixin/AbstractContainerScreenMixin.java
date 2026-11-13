@@ -3,8 +3,11 @@ package ru.annakyt.inventorylayout.mixin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.renderable.Renderable;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -22,11 +25,12 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Shadow protected int topPos;
     @Shadow protected int imageWidth;
 
+    @Shadow
+    protected abstract <W extends GuiEventListener & Renderable & NarratableEntry> W addRenderableWidget(W widget);
+
     @Inject(method = "init", at = @At("TAIL"))
     private void inventoryLayout$addButton(CallbackInfo ci) {
-        AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>)(Object)this;
         boolean playerInventoryScreen = Minecraft.getInstance().screen instanceof InventoryScreen;
-
         Component label = Component.literal(playerInventoryScreen ? "Сохр." : "Сорт.");
         Component hint = Component.literal(playerInventoryScreen
                 ? "Сохранить расположение предметов"
@@ -46,6 +50,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
           .tooltip(Tooltip.create(hint))
           .build();
 
-        screen.addRenderableWidget(button);
+        addRenderableWidget(button);
     }
 }
